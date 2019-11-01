@@ -2987,7 +2987,7 @@ bool TokenAnnotator::spaceRequiredBefore(const AnnotatedLine &Line,
 // Returns 'true' if 'Tok' is a brace we'd want to break before in Allman style.
 static bool isAllmanBrace(const FormatToken &Tok) {
   return Tok.is(tok::l_brace) && Tok.BlockKind == BK_Block &&
-         !Tok.isOneOf(TT_ObjCBlockLBrace, TT_LambdaLBrace, TT_DictLiteral);
+         !Tok.isOneOf(TT_ObjCBlockLBrace, TT_DictLiteral);
 }
 
 bool TokenAnnotator::mustBreakBefore(const AnnotatedLine &Line,
@@ -3106,15 +3106,30 @@ bool TokenAnnotator::mustBreakBefore(const AnnotatedLine &Line,
   }
   if (Right.is(TT_InlineASMBrace))
     return Right.HasUnescapedNewline;
-  if (isAllmanBrace(Left) || isAllmanBrace(Right))
+  if (isAllmanBrace(Left) || isAllmanBrace(Right)) {
+    if (Right.is(TT_LambdaLBrace)) {
+      if (Right.MatchingParen && Right.MatchingParen->Next &&
+          Right.MatchingParen->Next->isOneOf(tok::comma, tok::r_paren) &&
+          Style.AllowShortLambdasOnASingleLine == FormatStyle::SLS_Inline)
+        return false;
+
+      if (Style.AllowShortLambdasOnASingleLine == FormatStyle::SLS_None ||
+          Style.AllowShortLambdasOnASingleLine == FormatStyle::SLS_Inline ||
+          (!Right.Children.empty() &&
+           Style.AllowShortLambdasOnASingleLine == FormatStyle::SLS_Empty) ||
+          (Right.Next && Right.Next->NewlinesBefore > 0))
+        return true;
+    }
     return (Line.startsWith(tok::kw_enum) && Style.BraceWrapping.AfterEnum) ||
            (Line.startsWith(tok::kw_typedef, tok::kw_enum) &&
             Style.BraceWrapping.AfterEnum) ||
            (Line.startsWith(tok::kw_class) && Style.BraceWrapping.AfterClass) ||
            (Line.startsWith(tok::kw_struct) && Style.BraceWrapping.AfterStruct);
+  }
   if (Left.is(TT_ObjCBlockLBrace) &&
       Style.AllowShortBlocksOnASingleLine == FormatStyle::SBS_Never)
     return true;
+
 
   if (Left.is(TT_LambdaLBrace)) {
     if (Left.MatchingParen && Left.MatchingParen->Next &&
