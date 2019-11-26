@@ -1063,9 +1063,10 @@ unsigned ContinuationIndenter::getNewLineColumn(const LineState &State) {
   if (PreviousNonComment && PreviousNonComment->is(TT_InheritanceColon) &&
       Style.BreakInheritanceList == FormatStyle::BILS_AfterColon)
     return State.Stack.back().Indent;
-  if (NextNonComment->isOneOf(TT_CtorInitializerColon, TT_InheritanceColon,
-                              TT_InheritanceComma))
+  if (NextNonComment->isOneOf(TT_CtorInitializerColon, TT_InheritanceColon))
     return State.FirstIndent + Style.ConstructorInitializerIndentWidth;
+  if (NextNonComment->is(TT_InheritanceComma))
+    return State.Stack.back().Indent - 2;
   if (Previous.is(tok::r_paren) && !Current.isBinaryOperator() &&
       !Current.isOneOf(tok::colon, tok::comment))
     return ContinuationIndent;
